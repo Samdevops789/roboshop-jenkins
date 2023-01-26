@@ -1,0 +1,36 @@
+pipeline {
+  agent any
+
+  options {
+    ansiColor('xterm')
+  }
+
+  parameters {
+    string(name: 'COMPONENT', defaultValue: '', description: 'App Component Name')
+    string(name: 'ENV', defaultValue: '', description: 'ENV')
+    string(name: 'APP_VERSION', defaultValue: '', description: 'APP_VERSION')
+  }
+
+  environment {
+    SSH = credentials('SSH')
+  }
+
+  stages {
+
+    stage('App Deploy') {
+      steps {
+        dir('app') {
+          git branch: 'main', url: 'https://github.com/raghudevopsb66/roboshop-mutable-ansible.git'
+          sh '''
+            aws ec2 describe-instances --filters "Name=tag:Name,Values=${COMPONENT}-prod" | jq '.Reservations[].Instances[].PrivateIpAddress' >inv
+            ansible-playbook -i inv roboshop.yml -e APP_COMPONENT_ROLE=${COMPONENT} -e ENV=${ENV} -e APP_VERSION=${APP_VERSION} -e ansible_user=${SSH_USR} -e ansible_password=${SSH_PSW} -e HOSTS=all
+          '''
+        }
+      }
+    }
+
+
+  }
+
+
+}

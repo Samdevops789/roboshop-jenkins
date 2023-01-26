@@ -1,0 +1,120 @@
+pipeline {
+  agent any
+
+  options {
+    ansiColor('xterm')
+  }
+
+  stages {
+
+    stage('VPC & DB') {
+      steps {
+        dir('vpc-n-db') {
+          git branch: 'main', url: 'https://github.com/raghudevopsb66/terraform-mutable-infra.git'
+          sh '''
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars
+          '''
+        }
+      }
+    }
+
+    stage('Backend Components') {
+      parallel {
+
+        stage('Cart') {
+          steps {
+            dir('cart') {
+              git branch: 'main', url: 'https://github.com/raghudevopsb66/cart-infra.git'
+              sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars  -var APP_VERSION=2.0.0
+          '''
+            }
+          }
+        }
+
+        stage('Catalogue') {
+          steps {
+            dir('catalogue') {
+              git branch: 'main', url: 'https://github.com/raghudevopsb66/catalogue-infra.git'
+              sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars -var APP_VERSION=2.0.0
+          '''
+            }
+          }
+        }
+
+        stage('User') {
+          steps {
+            dir('user') {
+              git branch: 'main', url: 'https://github.com/raghudevopsb66/user-infra.git'
+              sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars -var APP_VERSION=2.0.0
+          '''
+            }
+          }
+        }
+
+        stage('Shipping') {
+          steps {
+            dir('shipping') {
+              git branch: 'main', url: 'https://github.com/raghudevopsb66/shipping-infra.git'
+              sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars -var APP_VERSION=2.0.1
+          '''
+            }
+          }
+        }
+
+        stage('Payment') {
+          steps {
+            dir('payment') {
+              git branch: 'main', url: 'https://github.com/raghudevopsb66/payment-infra.git'
+              sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars -var APP_VERSION=2.0.0
+          '''
+            }
+          }
+        }
+
+
+      }
+
+    }
+
+    stage('Frontend') {
+      steps {
+        dir('frontend') {
+          git branch: 'main', url: 'https://github.com/raghudevopsb66/frontend-infra.git'
+          sh '''
+            cd immutable
+            terrafile
+            terraform init -backend-config=env/prod-backend.tfvars
+            terraform apply -auto-approve -var-file=env/prod.tfvars -var APP_VERSION=2.0.0
+          '''
+        }
+      }
+    }
+
+
+
+  }
+
+
+}
